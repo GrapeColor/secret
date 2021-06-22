@@ -3,7 +3,7 @@ FROM node:16
 WORKDIR /app/secret
 
 COPY package*.json ./
-RUN [ "npm", "ci", "--production", "--ignore-scripts" ]
+RUN [ "npm", "ci" ]
 
 COPY . .
 
