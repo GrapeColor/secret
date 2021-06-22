@@ -66,16 +66,31 @@ export namespace SecretShare {
   function receive(interaction: Interaction): void {
     if (interaction.isCommand())
       if (interaction.commandName === 'share')
-        sharingMessage(interaction).catch(console.error);
+        sharingMessage(interaction)
+          .catch(() => unknownError(interaction));
 
     if (interaction.isButton()) {
       const customID = interaction.customID;
       if (customID.startsWith(sharingIDPrefix))
         trasferMessage(interaction)
-          .catch(console.error);
+          .catch(() => unknownError(interaction));
       if (customID.startsWith(deleteIDPrefix))
-        deleteSharingMessage(interaction);
+        deleteSharingMessage(interaction)
+          .catch(() => unknownError(interaction));
     }
+  }
+
+  function unknownError(interaction: Interaction): void {
+    if (
+      !interaction.isCommand()
+      && !interaction.isButton()
+      && !interaction.isMessageComponent()
+    ) return;
+
+    interaction.reply({
+      ephemeral: true,
+      embeds: [{ title: '⚠️ 不明なエラーが発生しました' }],
+    });
   }
 
   async function sharingMessage(
@@ -161,17 +176,17 @@ export namespace SecretShare {
 
     if (!authorID || !member || !shareMessageID) return;
 
-    if (!validateRoles(member, sharingMessage)) {
-      lackRoleTransferMessage(interaction);
-      return;
-    }
+    if (!validateRoles(member, sharingMessage))
+      return lackRoleTransferMessage(interaction);
 
     const author = await bot.users.fetch(authorID);
     const dmChannel = await author.createDM();
     const shareMessage
-      = await dmChannel.messages.fetch(`${BigInt(shareMessageID)}`);
-    const otherDMChannel = await interaction.user.createDM();
+      = await Utils.fetchMessage(bot, dmChannel.id, shareMessageID);
+      
+    if (!shareMessage) return notFoundTranceferMessage(interaction);
 
+    const otherDMChannel = await interaction.user.createDM();
     otherDMChannel.send({
       embeds: [messgeToEmbed(shareMessage, author)],
     })
@@ -205,8 +220,10 @@ export namespace SecretShare {
       );
   }
 
-  function lackRoleTransferMessage(interaction: ButtonInteraction): void {
-    interaction.reply({
+  function lackRoleTransferMessage(
+    interaction: ButtonInteraction
+  ): Promise<void> {
+    return interaction.reply({
       ephemeral: true,
       embeds: [
         {
@@ -216,8 +233,16 @@ export namespace SecretShare {
             + 'だけが秘匿メッセージを受け取れます。',
         }
       ]
-    })
-      .catch(console.error);
+    });
+  }
+
+  function notFoundTranceferMessage(
+    interaction: ButtonInteraction
+  ): Promise<void> {
+    return interaction.reply({
+      ephemeral: true,
+      embeds: [{ title: '⚠️ 秘匿メッセージが削除されました' }],
+    });
   }
 
   function messgeToEmbed(message: Message, author: User): MessageEmbed {
@@ -262,7 +287,9 @@ export namespace SecretShare {
     })
   }
 
-  function deleteSharingMessage(interaction: ButtonInteraction): void {
+  async function deleteSharingMessage(
+    interaction: ButtonInteraction
+  ): Promise<void> {
     const channel = interaction.channel;
     const message = interaction.message;
     const author = message.interaction?.user;
@@ -271,7 +298,11 @@ export namespace SecretShare {
     if (!channel || !author || !member) return;
 
     if (member.user.id === author.id)
-      Utils.deleteMessage(interaction.client, channel.id, message.id)
-        .catch(console.error);
+      await Utils.deleteMessage(interaction.client, channel.id, message.id);
+    else
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [{ title: '⚠️ このメッセージは本人のみが削除できます' }],
+      });
   }
 }
