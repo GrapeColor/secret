@@ -143,7 +143,7 @@ export namespace SecretShare {
             {
               type: 'BUTTON',
               style: 'PRIMARY',
-              label: 'DMでメッセージを受け取る',
+              label: 'メッセージを受け取る',
               customID:
                 `${sharingIDPrefix},${lastMessageID}`
             },
