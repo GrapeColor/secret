@@ -21,4 +21,4 @@ Discord上でサーバー上のチャンネルを経由して、DMから複数�
 
 ## 導入方法
 以下のリンクからサーバーへ導入できます。  
-https://discord.com/api/oauth2/authorize?client_id=653253608858583040&permissions=19456&scope=bot  
+https://discord.com/api/oauth2/authorize?client_id=653253608858583040&permissions=18432&scope=bot%20applications.commands  
