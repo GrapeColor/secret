@@ -34,9 +34,15 @@ export namespace SecretShare {
         'このチャンネルにDMで最後に送信したメッセージを秘匿共有します',
       options: [
         {
-          type: 3,
+          type: 'STRING',
+          name: 'summary',
+          description: '秘匿メッセージの要約を指定できます(任意)',
+          required: false,
+        },
+        {
+          type: 'STRING',
           name: 'roles',
-          description: '秘匿メッセージを共有するロールを指定できます(任意)',
+          description: '秘匿メッセージを共有するロールを指定できます(任意・複数可)',
           required: false,
         },
       ],
@@ -67,20 +73,22 @@ export namespace SecretShare {
     if (interaction.isCommand())
       if (interaction.commandName === 'share')
         sharingMessage(interaction)
-          .catch(() => unknownError(interaction));
+          .catch(exception => unknownError(interaction, exception));
 
     if (interaction.isButton()) {
       const customID = interaction.customID;
       if (customID.startsWith(sharingIDPrefix))
         trasferMessage(interaction)
-          .catch(() => unknownError(interaction));
+          .catch(exception => unknownError(interaction, exception));
       if (customID.startsWith(deleteIDPrefix))
         deleteSharingMessage(interaction)
-          .catch(() => unknownError(interaction));
+          .catch(exception => unknownError(interaction, exception));
     }
   }
 
-  function unknownError(interaction: Interaction): void {
+  function unknownError(interaction: Interaction, exception: unknown): void {
+    console.error(exception);
+
     if (
       !interaction.isCommand()
       && !interaction.isButton()
@@ -90,7 +98,8 @@ export namespace SecretShare {
     interaction.reply({
       ephemeral: true,
       embeds: [{ title: '⚠️ 不明なエラーが発生しました' }],
-    });
+    })
+      .catch(console.error);
   }
 
   async function sharingMessage(
@@ -103,29 +112,27 @@ export namespace SecretShare {
 
     const lastMessage = await dmChannel.messages.fetch(lastMessageID);
 
-    if (author.id === lastMessage.author.id) {
-      const rolesString = interaction.options.get('roles')?.value;
-      const mentions = typeof rolesString === 'string'
-        ? [...rolesString.matchAll(/(?<!\\)<@&\d+>/g)].map(match => match[0])
-        : [];
-
-      await replyResolveSharingMessage(interaction, lastMessageID, mentions);
-    }
+    if (author.id === lastMessage.author.id)
+      await replyResolveSharingMessage(interaction, lastMessageID);
     else
       await replyRejectSharingMessage(interaction);
   }
 
   function replyResolveSharingMessage(
-    interaction: CommandInteraction,
-    lastMessageID: Snowflake,
-    roleMentions: string[],
+    interaction: CommandInteraction, lastMessageID: Snowflake
   ): Promise<void> {
     const embed = new MessageEmbed({
       title: '📨 秘匿メッセージが共有されました'
     });
+    const summary = interaction.options.get('summary')?.value;
+    const rolesString = interaction.options.get('roles')?.value;
 
-    if (roleMentions.length)
-      embed.addField('共有するロール', roleMentions.join(' '));
+    if (typeof summary === 'string') embed.setDescription(summary);
+
+    if (typeof rolesString === 'string') embed.addField(
+      '共有するロール',
+      [...rolesString.matchAll(/(?<!\\)<@&\d+>/g)].map(m => m[0]).join(' ')
+    );
 
     return interaction.reply({
       embeds: [embed],
@@ -198,7 +205,7 @@ export namespace SecretShare {
     member: GuildMember | APIInteractionGuildMember,
     message: Message | APIMessage,
   ): boolean {
-    const roleIDs = message.embeds[0].fields?.[0].value
+    const roleIDs = message.embeds[0].fields?.[0]?.value
       .replace(/<@&|>/g, '')
       .split(' ');
 
@@ -268,7 +275,7 @@ export namespace SecretShare {
   function resolveTransferMessage(interaction: ButtonInteraction): void {
     interaction.reply({
       ephemeral: true,
-      embeds: [{ title: '✅ 秘匿メッセージをDMへ送信しました' }]
+      embeds: [{ title: '✅ 秘匿メッセージをDMへ送信しました' }],
     })
       .catch(console.error);
   }
