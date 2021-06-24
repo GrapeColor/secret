@@ -36,14 +36,12 @@ export namespace SecretShare {
         {
           type: 'STRING',
           name: 'summary',
-          description: '秘匿メッセージの要約を指定できます(任意)',
-          required: false,
+          description: '秘匿メッセージの要約を指定できます',
         },
         {
           type: 'STRING',
           name: 'roles',
-          description: '秘匿メッセージを共有するロールを指定できます(任意・複数可)',
-          required: false,
+          description: '秘匿メッセージを共有するロールを指定できます(複数可)',
         },
       ],
     },
